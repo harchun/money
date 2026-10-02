@@ -29,7 +29,7 @@ th{background:#f8fafc;color:#6b7280}th:first-child,td:first-child{text-align:lef
 <div class="row"><input id="token" class="token" type="password" placeholder="貼上 GitHub Fine-grained Personal Access Token">
 <button onclick="connectGitHub()">連接 GitHub</button><button class="secondary" onclick="syncFromGitHub()">重新讀取雲端</button></div>
 <div id="status" class="status warn">尚未連接 GitHub：目前僅使用本機暫存。</div>
-<div class="note">建議 Token 只授權 <b>harchun/money</b> 這個 Repository 的 Contents 讀寫權限。Token 會只存在你的瀏覽器，不會寫入 GitHub 程式碼。</div>
+<div class="note">建立 Token 後請選 <b>Fine-grained token</b> → Repository access 選 <b>Only select repositories</b> → 選 <b>harchun/money</b> → Repository permissions 的 <b>Contents</b> 設為 <b>Read and write</b>。Token 只存在你的瀏覽器，不會寫入 GitHub 程式碼。<br><span class="danger">⚠️ Token 是機密憑證，不要貼到 GitHub 程式碼、截圖或傳給別人。</span></div>
 </div>
 
 <div class="cards">
