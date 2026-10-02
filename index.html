@@ -84,7 +84,7 @@ function setStatus(msg,ok=false){$("status").textContent=msg;$("status").classNa
 
 async function ghGet(){
   const r=await fetch(API,{headers:{"Accept":"application/vnd.github+json"}});
-  if(!r.ok)throw new Error("GitHub 讀取失敗 HTTP "+r.status);
+  if(!r.ok){let z=await r.json().catch(()=>({}));throw new Error("GitHub 讀取 HTTP "+r.status+"："+(z.message||"未知錯誤"));}
   const j=await r.json();cloudSha=j.sha;
   const bytes=Uint8Array.from(atob(j.content.replace(/\n/g,"")),c=>c.charCodeAt(0));
   const data=JSON.parse(new TextDecoder().decode(bytes));
@@ -93,7 +93,7 @@ async function ghGet(){
 async function ghPut(){
   const t=token();if(!t){cloudReady=false;setStatus("尚未連接 GitHub：資料只存在本機。");return false}
   const r0=await fetch(API,{headers:{"Accept":"application/vnd.github+json","Authorization":"Bearer "+t}});
-  if(!r0.ok)throw new Error("GitHub 權限或讀取失敗 HTTP "+r0.status);
+  if(!r0.ok){let z=await r0.json().catch(()=>({}));throw new Error("GitHub API HTTP "+r0.status+"："+(z.message||"未知錯誤"));}
   const j=await r0.json();cloudSha=j.sha;
   const payload={income:I,expense:E,updatedAt:new Date().toISOString()};
   const raw=JSON.stringify(payload,null,2),b64=btoa(String.fromCharCode(...new TextEncoder().encode(raw)));
@@ -120,7 +120,7 @@ async function connectGitHub(){
       }else await ghPut();
     }else await ghPut();
     cloudReady=true;setStatus("GitHub 已連接，資料會直接保存到 Repository ✓",true);render();
-  }catch(e){localStorage.removeItem("moneyGitHubToken");setStatus("連接失敗："+e.message);alert("GitHub 連接失敗，請確認 Token 權限。")}
+  }catch(e){localStorage.removeItem("moneyGitHubToken");setStatus("連接失敗："+e.message);alert("GitHub 連接失敗：\n\n"+e.message+"\n\n請把這個錯誤訊息貼給我，我可以直接判斷是 Token、Repository 或權限問題。")}
 }
 async function syncFromGitHub(){
   try{const cloud=await ghGet();I=cloud.income;E=cloud.expense;localSave();cloudReady=true;setStatus("已從 GitHub 重新載入資料 ✓",true);render()}
