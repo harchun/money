@@ -1,20 +1,156 @@
-<!doctype html><html lang="zh-Hant"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>收入 × 負債管理</title><style>
-*{box-sizing:border-box}body{margin:0;background:#f4f6f8;color:#18212b;font-family:Arial,"Noto Sans TC",sans-serif}.wrap{max-width:1200px;margin:auto;padding:25px 16px}.cards{display:grid;grid-template-columns:repeat(4,1fr);gap:12px}.card{background:#fff;border:1px solid #e5e7eb;border-radius:16px;padding:18px;margin-bottom:14px}.grid{display:grid;grid-template-columns:1.4fr 1fr;gap:14px}.label,.note{color:#6b7280;font-size:13px}.v{font-size:27px;font-weight:800;margin-top:7px}.blue{color:#2563eb}.red{color:#dc2626}.green{color:#059669}h1{margin:0 0 5px}h2{font-size:18px}input,select,button{padding:9px 11px;border:1px solid #d1d5db;border-radius:9px;background:#fff;color:#111827;font:inherit}select option{color:#111827;background:#fff}button{background:#111827;color:#fff;border:0;cursor:pointer}.secondary{background:#eef2f7;color:#111827}.row{display:flex;gap:8px;flex-wrap:wrap;margin:10px 0}.money{width:140px;text-align:right}.kpi{display:flex;justify-content:space-between;border-bottom:1px solid #e5e7eb;padding:9px 0}.list>div{display:flex;justify-content:space-between;gap:10px;padding:8px 0;border-bottom:1px solid #eee}.table{overflow:auto}table{width:100%;border-collapse:collapse;min-width:900px}th,td{padding:9px;border-bottom:1px solid #e5e7eb;text-align:right;white-space:nowrap}th{background:#f8fafc;color:#6b7280}th:first-child,td:first-child{text-align:left}.note{margin-top:10px;line-height:1.6}@media(max-width:800px){.cards,.grid{grid-template-columns:1fr 1fr}.grid{grid-template-columns:1fr}}@media(max-width:500px){.cards{grid-template-columns:1fr 1fr}.v{font-size:21px}}
-</style></head><body><div class="wrap"><header><h1>收入 × 負債管理</h1><div class="label">收入 − 日常開銷 − 還款 = 真正盈餘</div></header>
-<div class="cards"><div class="card"><div class="label">本月收入</div><div id="topI" class="v blue">NT$ 0</div></div><div class="card"><div class="label">本月開銷</div><div id="topE" class="v red">NT$ 0</div></div><div class="card"><div class="label">本月還款</div><div id="topD" class="v red">NT$ 0</div></div><div class="card"><div class="label">本月真正盈餘</div><div id="topR" class="v green">NT$ 0</div></div></div>
-<div class="grid"><div class="card"><h2>收入與日常開銷</h2><div class="row"><select id="month" onchange="render()"></select><input id="date" type="date"><input id="desc" placeholder="收入來源／備註"><input id="amt" class="money" type="number" placeholder="收到多少"><button onclick="income()">＋收入</button></div><div id="il" class="list"></div><hr><div class="row"><input id="edate" type="date"><input id="edesc" placeholder="支出項目／備註"><input id="eamt" class="money" type="number" placeholder="花費多少"><button onclick="expense()">＋支出</button></div><div id="el" class="list"></div><div class="kpi"><span>收入</span><b id="si">NT$ 0</b></div><div class="kpi"><span>日常開銷</span><b id="se" class="red">NT$ 0</b></div><div class="kpi"><span>負債還款</span><b id="sd">NT$ 0</b></div><div class="kpi"><span>真正盈餘</span><b id="sr">NT$ 0</b></div><div class="note">資料保存在瀏覽器 localStorage。</div></div>
-<div class="card"><h2>負債概況</h2><div class="kpi"><span>原始負債</span><b>NT$ 1,073,106</b></div><div class="kpi"><span>預計最後一期</span><b>2031/06</b></div><button class="secondary" onclick="clearAll()">清除所有收入／支出</button></div></div>
-<div class="card"><h2>完整月度現金流</h2><div class="table"><table><thead><tr><th>月份</th><th>收入</th><th>開銷</th><th>J信1</th><th>J信2</th><th>華雄青</th><th>連線9.8</th><th>還款</th><th>盈餘</th></tr></thead><tbody id="tb"></tbody></table></div></div></div>
-<script>const S={};const A=(y,m,j1,j2,hx,lx)=>S[y+"-"+String(m).padStart(2,"0")]={j1,j2,hx,lx};[10,11,12].forEach(m=>A(2026,m,12911,10123,7500,1320));for(let m=1;m<=12;m++)A(2027,m,12911,10123,7500,1320);for(let m=1;m<=3;m++)A(2028,m,12911,10123,7500,1320);for(let m=4;m<=6;m++)A(2028,m,12911,0,7500,1320);for(let m=7;m<=12;m++)A(2028,m,12911,0,0,1320);for(let y=2029;y<=2030;y++)for(let m=1;m<=12;m++)A(y,m,12911,0,0,1320);for(let m=1;m<=5;m++)A(2031,m,0,0,0,1320);A(2031,6,0,0,0,1011);
-const M=Object.keys(S),I=JSON.parse(localStorage.getItem("moneyIncome")||"[]"),E=JSON.parse(localStorage.getItem("moneyExpense")||"[]"),$=id=>document.getElementById(id),money=n=>"NT$ "+Math.round(n||0).toLocaleString("zh-TW"),sum=(a,m)=>a.filter(x=>x.m===m).reduce((s,x)=>s+ +x.a,0),D=m=>{let o=S[m];return o.j1+o.j2+o.hx+o.lx};
+<!doctype html>
+<html lang="zh-Hant">
+<head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>收入 × 負債管理</title>
+<style>
+*{box-sizing:border-box}body{margin:0;background:#f4f6f8;color:#18212b;font-family:Arial,"Noto Sans TC",sans-serif}
+.wrap{max-width:1200px;margin:auto;padding:25px 16px}.cards{display:grid;grid-template-columns:repeat(4,1fr);gap:12px}
+.card{background:#fff;border:1px solid #e5e7eb;border-radius:16px;padding:18px;margin-bottom:14px}.grid{display:grid;grid-template-columns:1.4fr 1fr;gap:14px}
+.label,.note{color:#6b7280;font-size:13px}.v{font-size:27px;font-weight:800;margin-top:7px}.blue{color:#2563eb}.red{color:#dc2626}.green{color:#059669}
+h1{margin:0 0 5px}h2{font-size:18px}input,select,button{padding:9px 11px;border:1px solid #d1d5db;border-radius:9px;background:#fff;color:#111827;font:inherit}
+select option{color:#111827;background:#fff}button{background:#111827;color:#fff;border:0;cursor:pointer}.secondary{background:#eef2f7;color:#111827}
+.row{display:flex;gap:8px;flex-wrap:wrap;margin:10px 0}.money{width:140px;text-align:right}.kpi{display:flex;justify-content:space-between;border-bottom:1px solid #e5e7eb;padding:9px 0}
+.list>div{display:flex;justify-content:space-between;gap:10px;padding:8px 0;border-bottom:1px solid #eee}.table{overflow:auto}
+table{width:100%;border-collapse:collapse;min-width:900px}th,td{padding:9px;border-bottom:1px solid #e5e7eb;text-align:right;white-space:nowrap}
+th{background:#f8fafc;color:#6b7280}th:first-child,td:first-child{text-align:left}.note{margin-top:10px;line-height:1.6}
+.status{padding:8px 10px;border-radius:8px;background:#f3f4f6;margin:8px 0;font-size:13px}.ok{background:#ecfdf5;color:#047857}.warn{background:#fff7ed;color:#c2410c}
+.token{width:100%;max-width:650px}.danger{color:#b91c1c}
+@media(max-width:800px){.cards,.grid{grid-template-columns:1fr 1fr}.grid{grid-template-columns:1fr}}@media(max-width:500px){.cards{grid-template-columns:1fr 1fr}.v{font-size:21px}}
+</style>
+</head>
+<body>
+<div class="wrap">
+<header><h1>收入 × 負債管理</h1><div class="label">收入 − 日常開銷 − 還款 = 真正盈餘</div></header>
+
+<div class="card">
+<h2>☁️ GitHub 雲端儲存</h2>
+<div class="note">收入與支出會儲存在這個 GitHub Repository 的 <b>data/finance.json</b>。資料檔是公開的；你可以接受資料公開，但請不要把 GitHub 密碼放進這裡。</div>
+<div class="row"><input id="token" class="token" type="password" placeholder="貼上 GitHub Fine-grained Personal Access Token">
+<button onclick="connectGitHub()">連接 GitHub</button><button class="secondary" onclick="syncFromGitHub()">重新讀取雲端</button></div>
+<div id="status" class="status warn">尚未連接 GitHub：目前僅使用本機暫存。</div>
+<div class="note">建議 Token 只授權 <b>harchun/money</b> 這個 Repository 的 Contents 讀寫權限。Token 會只存在你的瀏覽器，不會寫入 GitHub 程式碼。</div>
+</div>
+
+<div class="cards">
+<div class="card"><div class="label">本月收入</div><div id="topI" class="v blue">NT$ 0</div></div>
+<div class="card"><div class="label">本月開銷</div><div id="topE" class="v red">NT$ 0</div></div>
+<div class="card"><div class="label">本月還款</div><div id="topD" class="v red">NT$ 0</div></div>
+<div class="card"><div class="label">本月真正盈餘</div><div id="topR" class="v green">NT$ 0</div></div>
+</div>
+
+<div class="grid">
+<div class="card">
+<h2>收入與日常開銷</h2>
+<div class="row"><select id="month" onchange="render()"></select><input id="date" type="date"><input id="desc" placeholder="收入來源／備註"><input id="amt" class="money" type="number" placeholder="收到多少"><button onclick="income()">＋收入</button></div>
+<div id="il" class="list"></div><hr>
+<div class="row"><input id="edate" type="date"><input id="edesc" placeholder="支出項目／備註"><input id="eamt" class="money" type="number" placeholder="花費多少"><button onclick="expense()">＋支出</button></div>
+<div id="el" class="list"></div>
+<div class="kpi"><span>收入</span><b id="si">NT$ 0</b></div><div class="kpi"><span>日常開銷</span><b id="se" class="red">NT$ 0</b></div>
+<div class="kpi"><span>負債還款</span><b id="sd">NT$ 0</b></div><div class="kpi"><span>真正盈餘</span><b id="sr">NT$ 0</b></div>
+<div class="note">每筆收入、每筆支出都會獨立保存。已連接 GitHub 時，新增／刪除後會同步到雲端。</div>
+</div>
+
+<div class="card"><h2>負債概況</h2><div class="kpi"><span>原始負債</span><b>NT$ 1,073,106</b></div><div class="kpi"><span>預計最後一期</span><b>2031/06</b></div>
+<button class="secondary" onclick="clearAll()">清除所有收入／支出</button></div>
+</div>
+
+<div class="card"><h2>完整月度現金流</h2><div class="table"><table><thead><tr><th>月份</th><th>收入</th><th>開銷</th><th>J信1</th><th>J信2</th><th>華雄青</th><th>連線9.8</th><th>還款</th><th>盈餘</th></tr></thead><tbody id="tb"></tbody></table></div></div>
+</div>
+
+<script>
+const S={};
+const A=(y,m,j1,j2,hx,lx)=>S[y+"-"+String(m).padStart(2,"0")]={j1,j2,hx,lx};
+[10,11,12].forEach(m=>A(2026,m,12911,10123,7500,1320));
+for(let m=1;m<=12;m++)A(2027,m,12911,10123,7500,1320);
+for(let m=1;m<=3;m++)A(2028,m,12911,10123,7500,1320);
+for(let m=4;m<=6;m++)A(2028,m,12911,0,7500,1320);
+for(let m=7;m<=12;m++)A(2028,m,12911,0,0,1320);
+for(let y=2029;y<=2030;y++)for(let m=1;m<=12;m++)A(y,m,12911,0,0,1320);
+for(let m=1;m<=5;m++)A(2031,m,0,0,0,1320);A(2031,6,0,0,0,1011);
+
+const M=Object.keys(S),$=id=>document.getElementById(id),money=n=>"NT$ "+Math.round(n||0).toLocaleString("zh-TW");
+let I=JSON.parse(localStorage.getItem("moneyIncome")||"[]"),E=JSON.parse(localStorage.getItem("moneyExpense")||"[]");
+let cloudSha=null, cloudReady=false;
+const API="https://api.github.com/repos/harchun/money/contents/data/finance.json";
+
+const sum=(a,m)=>a.filter(x=>x.m===m).reduce((s,x)=>s+ +x.a,0),D=m=>{let o=S[m];return o.j1+o.j2+o.hx+o.lx};
 M.forEach(m=>{let o=document.createElement("option");o.value=m;o.textContent=m.replace("-","/");$("month").appendChild(o)});
+
 function esc(x){return String(x).replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]))}
-function save(){localStorage.setItem("moneyIncome",JSON.stringify(I));localStorage.setItem("moneyExpense",JSON.stringify(E))}
-function income(){let m=$("month").value,a=+$("amt").value;if(a<=0)return alert("請輸入收入");I.push({id:Date.now()+Math.random(),m,date:$("date").value||m+"-01",d:$("desc").value||"收入",a});save();$("amt").value="";$("desc").value="";render()}
-function expense(){let m=$("month").value,a=+$("eamt").value;if(a<=0)return alert("請輸入支出");E.push({id:Date.now()+Math.random(),m,date:$("edate").value||m+"-01",d:$("edesc").value||"日常支出",a});save();$("eamt").value="";$("edesc").value="";render()}
-function del(a,id){let i=a.findIndex(x=>x.id===id);if(i>=0){a.splice(i,1);save();render()}}
+function localSave(){localStorage.setItem("moneyIncome",JSON.stringify(I));localStorage.setItem("moneyExpense",JSON.stringify(E))}
+function token(){return localStorage.getItem("moneyGitHubToken")||""}
+function setStatus(msg,ok=false){$("status").textContent=msg;$("status").className="status "+(ok?"ok":"warn")}
+
+async function ghGet(){
+  const r=await fetch(API,{headers:{"Accept":"application/vnd.github+json"}});
+  if(!r.ok)throw new Error("GitHub 讀取失敗 HTTP "+r.status);
+  const j=await r.json();cloudSha=j.sha;
+  const bytes=Uint8Array.from(atob(j.content.replace(/\n/g,"")),c=>c.charCodeAt(0));
+  const data=JSON.parse(new TextDecoder().decode(bytes));
+  return {income:Array.isArray(data.income)?data.income:[],expense:Array.isArray(data.expense)?data.expense:[]};
+}
+async function ghPut(){
+  const t=token();if(!t){cloudReady=false;setStatus("尚未連接 GitHub：資料只存在本機。");return false}
+  const r0=await fetch(API,{headers:{"Accept":"application/vnd.github+json","Authorization":"Bearer "+t}});
+  if(!r0.ok)throw new Error("GitHub 權限或讀取失敗 HTTP "+r0.status);
+  const j=await r0.json();cloudSha=j.sha;
+  const payload={income:I,expense:E,updatedAt:new Date().toISOString()};
+  const raw=JSON.stringify(payload,null,2),b64=btoa(String.fromCharCode(...new TextEncoder().encode(raw)));
+  const r=await fetch(API,{method:"PUT",headers:{"Accept":"application/vnd.github+json","Authorization":"Bearer "+t,"Content-Type":"application/json","X-GitHub-Api-Version":"2022-11-28"},
+    body:JSON.stringify({message:"Update finance data",content:b64,sha:cloudSha,branch:"main"})});
+  if(!r.ok){let z=await r.text();throw new Error("GitHub 儲存失敗 HTTP "+r.status+" "+z.slice(0,160))}
+  const z=await r.json();cloudSha=z.content.sha;cloudReady=true;setStatus("已同步到 GitHub ✓ 最後同步："+new Date().toLocaleString("zh-TW"),true);return true;
+}
+async function save(){
+  localSave();
+  if(token()){
+    try{await ghPut()}catch(e){cloudReady=false;setStatus("GitHub 同步失敗："+e.message);console.error(e)}
+  }
+}
+async function connectGitHub(){
+  const t=$("token").value.trim();
+  if(!t)return alert("請貼上 GitHub Fine-grained Personal Access Token");
+  localStorage.setItem("moneyGitHubToken",t);
+  try{
+    const cloud=await ghGet();
+    if(cloud.income.length||cloud.expense.length){
+      if(confirm("GitHub 已有資料。要用 GitHub 資料覆蓋目前瀏覽器資料嗎？\n按「確定」= 使用 GitHub\n按「取消」= 保留本機資料並上傳到 GitHub")){
+        I=cloud.income;E=cloud.expense;localSave();
+      }else await ghPut();
+    }else await ghPut();
+    cloudReady=true;setStatus("GitHub 已連接，資料會直接保存到 Repository ✓",true);render();
+  }catch(e){localStorage.removeItem("moneyGitHubToken");setStatus("連接失敗："+e.message);alert("GitHub 連接失敗，請確認 Token 權限。")}
+}
+async function syncFromGitHub(){
+  try{const cloud=await ghGet();I=cloud.income;E=cloud.expense;localSave();cloudReady=true;setStatus("已從 GitHub 重新載入資料 ✓",true);render()}
+  catch(e){setStatus("GitHub 讀取失敗："+e.message)}
+}
+function income(){
+  let m=$("month").value,a=+$("amt").value;if(a<=0)return alert("請輸入收入");
+  I.push({id:Date.now()+Math.random(),m,date:$("date").value||m+"-01",d:$("desc").value||"收入",a});
+  $("amt").value="";$("desc").value="";save().then(render)
+}
+function expense(){
+  let m=$("month").value,a=+$("eamt").value;if(a<=0)return alert("請輸入支出");
+  E.push({id:Date.now()+Math.random(),m,date:$("edate").value||m+"-01",d:$("edesc").value||"日常支出",a});
+  $("eamt").value="";$("edesc").value="";save().then(render)
+}
+function del(a,id){let i=a.findIndex(x=>x.id===id);if(i>=0){a.splice(i,1);save().then(render)}}
 function list(a,m,id,cls,fn){let r=a.filter(x=>x.m===m);$(id).innerHTML=r.length?r.map(x=>'<div><span>'+x.date+'　'+esc(x.d)+'</span><span class="'+cls+'">'+money(x.a)+'　<button class="secondary" onclick="'+fn+'('+x.id+')">刪除</button></span></div>').join(""):'<div class="note">本月尚無紀錄</div>'}
 function di(id){del(I,id)}function de(id){del(E,id)}
-function render(){let m=$("month").value,i=sum(I,m),e=sum(E,m),d=D(m),r=i-e-d;$("topI").textContent=$("si").textContent=money(i);$("topE").textContent=$("se").textContent=money(e);$("topD").textContent=$("sd").textContent=money(d);$("topR").textContent=$("sr").textContent=money(r);$("topR").className="v "+(r>=0?"green":"red");$("sr").className=r>=0?"green":"red";$("date").value=m+"-01";$("edate").value=m+"-01";list(I,m,"il","green","di");list(E,m,"el","red","de");$("tb").innerHTML=M.map(x=>{let i=sum(I,x),e=sum(E,x),d=D(x),r=i-e-d,o=S[x];return '<tr><td>'+x.replace("-","/")+'</td><td>'+money(i)+'</td><td>'+money(e)+'</td><td>'+money(o.j1)+'</td><td>'+money(o.j2)+'</td><td>'+money(o.hx)+'</td><td>'+money(o.lx)+'</td><td>'+money(d)+'</td><td class="'+(r>=0?"green":"red")+'">'+money(r)+'</td></tr>'}).join("")}
-function clearAll(){if(confirm("確定清除所有收入與支出？")){I.length=0;E.length=0;save();render()}}$("month").value=M[0];render();
-</script></body></html>
+function render(){
+  let m=$("month").value,i=sum(I,m),e=sum(E,m),d=D(m),r=i-e-d;
+  $("topI").textContent=$("si").textContent=money(i);$("topE").textContent=$("se").textContent=money(e);
+  $("topD").textContent=$("sd").textContent=money(d);$("topR").textContent=$("sr").textContent=money(r);
+  $("topR").className="v "+(r>=0?"green":"red");$("sr").className=r>=0?"green":"red";
+  $("date").value=m+"-01";$("edate").value=m+"-01";list(I,m,"il","green","di");list(E,m,"el","red","de");
+  $("tb").innerHTML=M.map(x=>{let i=sum(I,x),e=sum(E,x),d=D(x),r=i-e-d,o=S[x];return '<tr><td>'+x.replace("-","/")+'</td><td>'+money(i)+'</td><td>'+money(e)+'</td><td>'+money(o.j1)+'</td><td>'+money(o.j2)+'</td><td>'+money(o.hx)+'</td><td>'+money(o.lx)+'</td><td>'+money(d)+'</td><td class="'+(r>=0?"green":"red")+'">'+money(r)+'</td></tr>'}).join("")
+}
+function clearAll(){
+  if(confirm("確定清除所有收入與支出？")){I=[];E=[];save().then(render)}
+}
+$("month").value=M[0];
+const savedToken=token();if(savedToken){$("token").value=savedToken;syncFromGitHub().catch(()=>render())}else render();
+</script>
+</body></html>
