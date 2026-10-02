@@ -25,12 +25,10 @@ th{background:#f8fafc;color:#6b7280}th:first-child,td:first-child{text-align:lef
 
 <div class="card">
 <h2>☁️ GitHub 雲端儲存</h2>
-<div class="note">收入與支出會儲存在這個 GitHub Repository 的 <b>data/finance.json</b>。資料檔是公開的；你可以接受資料公開，但請不要把 GitHub 密碼放進這裡。</div>
-<div class="row"><input id="token" class="token" type="password" placeholder="貼上 GitHub Fine-grained Personal Access Token">
-<button onclick="connectGitHub()">連接 GitHub</button><button class="secondary" onclick="syncFromGitHub()">重新讀取雲端</button></div>
-<div id="status" class="status warn">尚未連接 GitHub：目前僅使用本機暫存。</div>
-<div class="note">建立 Token 後請選 <b>Fine-grained token</b> → Repository access 選 <b>Only select repositories</b> → 選 <b>harchun/money</b> → Repository permissions 的 <b>Contents</b> 設為 <b>Read and write</b>。Token 只存在你的瀏覽器，不會寫入 GitHub 程式碼。<br><span class="danger">⚠️ Token 是機密憑證，不要貼到 GitHub 程式碼、截圖或傳給別人。</span></div>
-</div>
+<div class="note">現在改用 GitHub OAuth。你不需要把 Personal Access Token 貼到網站；登入後由後端安全地代你把資料寫入 GitHub。</div>
+<div class="row"><input id="apiBase" class="token" placeholder="API 網址，例如 https://money-api.example.workers.dev"><button onclick="saveApiBase()">儲存 API</button><button onclick="loginGitHub()">使用 GitHub 登入</button><button class="secondary" onclick="syncFromGitHub()">重新讀取</button><button class="secondary" onclick="logoutGitHub()">登出</button></div>
+<div id="status" class="status warn">尚未連接 GitHub。</div>
+</div></div>
 
 <div class="cards">
 <div class="card"><div class="label">本月收入</div><div id="topI" class="v blue">NT$ 0</div></div>
@@ -71,60 +69,38 @@ for(let m=1;m<=5;m++)A(2031,m,0,0,0,1320);A(2031,6,0,0,0,1011);
 
 const M=Object.keys(S),$=id=>document.getElementById(id),money=n=>"NT$ "+Math.round(n||0).toLocaleString("zh-TW");
 let I=JSON.parse(localStorage.getItem("moneyIncome")||"[]"),E=JSON.parse(localStorage.getItem("moneyExpense")||"[]");
-let cloudSha=null, cloudReady=false;
-const API="https://api.github.com/repos/harchun/money/contents/data/finance.json";
-
-const sum=(a,m)=>a.filter(x=>x.m===m).reduce((s,x)=>s+ +x.a,0),D=m=>{let o=S[m];return o.j1+o.j2+o.hx+o.lx};
-M.forEach(m=>{let o=document.createElement("option");o.value=m;o.textContent=m.replace("-","/");$("month").appendChild(o)});
-
-function esc(x){return String(x).replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]))}
-function localSave(){localStorage.setItem("moneyIncome",JSON.stringify(I));localStorage.setItem("moneyExpense",JSON.stringify(E))}
-function token(){return localStorage.getItem("moneyGitHubToken")||""}
-function setStatus(msg,ok=false){$("status").textContent=msg;$("status").className="status "+(ok?"ok":"warn")}
-
+let cloudReady=false;
+const DEFAULT_API="https://YOUR-WORKER.workers.dev";
+function apiBase(){return (localStorage.getItem("moneyApiBase")||DEFAULT_API).replace(/\\/$/,"")}
+function saveApiBase(){let v=$("apiBase").value.trim().replace(/\\/$/,"");if(!v)return alert("請輸入 API 網址");localStorage.setItem("moneyApiBase",v);setStatus("API 網址已保存，請按「使用 GitHub 登入」。")}
+function loginGitHub(){if(apiBase().includes("YOUR-WORKER"))return alert("請先填入你的 Cloudflare Worker API 網址");location.href=apiBase()+"/auth/login"}
+function logoutGitHub(){fetch(apiBase()+"/auth/logout",{credentials:"include"}).finally(()=>{cloudReady=false;setStatus("已登出 GitHub");render()})}
 async function ghGet(){
-  const r=await fetch(API,{headers:{"Accept":"application/vnd.github+json"}});
-  if(!r.ok){let z=await r.json().catch(()=>({}));throw new Error("GitHub 讀取 HTTP "+r.status+"："+(z.message||"未知錯誤"));}
-  const j=await r.json();cloudSha=j.sha;
-  const bytes=Uint8Array.from(atob(j.content.replace(/\n/g,"")),c=>c.charCodeAt(0));
-  const data=JSON.parse(new TextDecoder().decode(bytes));
-  return {income:Array.isArray(data.income)?data.income:[],expense:Array.isArray(data.expense)?data.expense:[]};
+  const r=await fetch(apiBase()+"/api/data",{credentials:"include"});
+  if(r.status===401)throw new Error("尚未登入 GitHub");
+  if(!r.ok){let z=await r.json().catch(()=>({}));throw new Error("API HTTP "+r.status+"："+(z.message||"讀取失敗"))}
+  return await r.json();
 }
 async function ghPut(){
-  const t=token();if(!t){cloudReady=false;setStatus("尚未連接 GitHub：資料只存在本機。");return false}
-  const r0=await fetch(API,{headers:{"Accept":"application/vnd.github+json","Authorization":"Bearer "+t}});
-  if(!r0.ok){let z=await r0.json().catch(()=>({}));throw new Error("GitHub API HTTP "+r0.status+"："+(z.message||"未知錯誤"));}
-  const j=await r0.json();cloudSha=j.sha;
-  const payload={income:I,expense:E,updatedAt:new Date().toISOString()};
-  const raw=JSON.stringify(payload,null,2),b64=btoa(String.fromCharCode(...new TextEncoder().encode(raw)));
-  const r=await fetch(API,{method:"PUT",headers:{"Accept":"application/vnd.github+json","Authorization":"Bearer "+t,"Content-Type":"application/json","X-GitHub-Api-Version":"2022-11-28"},
-    body:JSON.stringify({message:"Update finance data",content:b64,sha:cloudSha,branch:"main"})});
-  if(!r.ok){let z=await r.text();throw new Error("GitHub 儲存失敗 HTTP "+r.status+" "+z.slice(0,160))}
-  const z=await r.json();cloudSha=z.content.sha;cloudReady=true;setStatus("已同步到 GitHub ✓ 最後同步："+new Date().toLocaleString("zh-TW"),true);return true;
+  const r=await fetch(apiBase()+"/api/data",{method:"PUT",credentials:"include",headers:{"Content-Type":"application/json"},body:JSON.stringify({income:I,expense:E,updatedAt:new Date().toISOString()})});
+  if(r.status===401)throw new Error("GitHub 登入已失效，請重新登入");
+  if(!r.ok){let z=await r.json().catch(()=>({}));throw new Error("API HTTP "+r.status+"："+(z.message||"儲存失敗"))}
+  cloudReady=true;setStatus("已同步到 GitHub ✓ "+new Date().toLocaleString("zh-TW"),true);return true;
 }
 async function save(){
   localSave();
-  if(token()){
-    try{await ghPut()}catch(e){cloudReady=false;setStatus("GitHub 同步失敗："+e.message);console.error(e)}
+  if(localStorage.getItem("moneyApiBase")&&!apiBase().includes("YOUR-WORKER")){
+    try{await ghPut()}catch(e){cloudReady=false;setStatus("GitHub 同步失敗："+e.message)}
   }
 }
-async function connectGitHub(){
-  const t=$("token").value.trim();
-  if(!t)return alert("請貼上 GitHub Fine-grained Personal Access Token");
-  localStorage.setItem("moneyGitHubToken",t);
-  try{
-    const cloud=await ghGet();
-    if(cloud.income.length||cloud.expense.length){
-      if(confirm("GitHub 已有資料。要用 GitHub 資料覆蓋目前瀏覽器資料嗎？\n按「確定」= 使用 GitHub\n按「取消」= 保留本機資料並上傳到 GitHub")){
-        I=cloud.income;E=cloud.expense;localSave();
-      }else await ghPut();
-    }else await ghPut();
-    cloudReady=true;setStatus("GitHub 已連接，資料會直接保存到 Repository ✓",true);render();
-  }catch(e){localStorage.removeItem("moneyGitHubToken");setStatus("連接失敗："+e.message);alert("GitHub 連接失敗：\n\n"+e.message+"\n\n請把這個錯誤訊息貼給我，我可以直接判斷是 Token、Repository 或權限問題。")}
-}
 async function syncFromGitHub(){
-  try{const cloud=await ghGet();I=cloud.income;E=cloud.expense;localSave();cloudReady=true;setStatus("已從 GitHub 重新載入資料 ✓",true);render()}
+  try{const cloud=await ghGet();I=cloud.income||[];E=cloud.expense||[];localSave();cloudReady=true;setStatus("已從 GitHub 重新載入資料 ✓",true);render()}
   catch(e){setStatus("GitHub 讀取失敗："+e.message)}
+}
+async function checkSession(){
+  $("apiBase").value=localStorage.getItem("moneyApiBase")||"";
+  if(apiBase().includes("YOUR-WORKER"))return;
+  try{const r=await fetch(apiBase()+"/api/session",{credentials:"include"});if(r.ok){const z=await r.json();if(z.authenticated){cloudReady=true;setStatus("GitHub 已登入 ✓ "+(z.login||""),true);await syncFromGitHub()}}}catch(e){}
 }
 function income(){
   let m=$("month").value,a=+$("amt").value;if(a<=0)return alert("請輸入收入");
@@ -151,6 +127,6 @@ function clearAll(){
   if(confirm("確定清除所有收入與支出？")){I=[];E=[];save().then(render)}
 }
 $("month").value=M[0];
-const savedToken=token();if(savedToken){$("token").value=savedToken;syncFromGitHub().catch(()=>render())}else render();
+checkSession().catch(()=>{});render();
 </script>
 </body></html>
