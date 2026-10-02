@@ -24,7 +24,7 @@ export default {
 
 const gh=(path,token,init={})=>fetch("https://api.github.com"+path,{
   ...init,
-  headers:{"Accept":"application/vnd.github+json","Authorization:"+"Bearer "+token,"X-GitHub-Api-Version":"2022-11-28",...(init.headers||{})}
+  headers:{"Accept":"application/vnd.github+json","Authorization":"Bearer "+token,"X-GitHub-Api-Version":"2022-11-28",...(init.headers||{})}
 });
 
 async function login(request,env){
@@ -52,7 +52,7 @@ async function callback(request,env){
   const encrypted=await seal(j.access_token,env.SESSION_SECRET);
   return new Response(null,{status:302,headers:{
     Location:env.FRONTEND_URL,
-    "Set-Cookie":cookie("gh_session",encrypted,60*60*8)+"; "+cookie("oauth_state","",0)
+    "Set-Cookie":cookie("gh_session",encrypted,60*60*8)
   }});
 }
 
